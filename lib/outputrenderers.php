@@ -577,6 +577,14 @@ class core_renderer extends renderer_base {
             // $course->id is not defined during installation
             return '';
         } else if (isloggedin()) {
+
+            // Include any requirements for auth plugins logout functionality.
+            $authsequence = get_enabled_auth_plugins(); // Auths, in sequence.
+            foreach($authsequence as $authname) {
+                $authplugin = get_auth_plugin($authname);
+                $authplugin->before_logout();
+            }
+
             $context = context_course::instance($course->id);
 
             $fullname = fullname($USER, true);
