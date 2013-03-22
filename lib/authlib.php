@@ -435,6 +435,19 @@ class auth_plugin_base {
     }
 
     /**
+     * Before logout hook.
+     * This method is called from login_info() for all enabled auth plugins to include
+     * expected requirements such as Javascript wherever a logout is possible.
+     *
+     * @global object
+     */
+    function before_logout() {
+        global $USER; // Use $USER->auth to find the plugin used for login.
+
+        // Override if needed.
+    }
+
+    /**
      * Pre logout hook.
      * This method is called from require_logout() for all enabled auth plugins,
      *
