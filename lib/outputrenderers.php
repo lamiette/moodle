@@ -563,7 +563,8 @@ class core_renderer extends renderer_base {
             $realuser = session_get_realuser();
             $fullname = fullname($realuser, true);
             if ($withlinks) {
-                $realuserinfo = " [<a href=\"$CFG->wwwroot/course/loginas.php?id=$course->id&amp;sesskey=".sesskey()."\">$fullname</a>] ";
+                $realuserurl  = new moodle_url('/course/loginas.php', array('id' => $course->id, 'sesskey' => sesskey()));
+                $realuserinfo = ' [' . html_writer::link($realuserurl, $fullname, array('class' => 'loggedinas')) . '] ';
             } else {
                 $realuserinfo = " [$fullname] ";
             }
@@ -590,63 +591,72 @@ class core_renderer extends renderer_base {
             $fullname = fullname($USER, true);
             // Since Moodle 2.0 this link always goes to the public profile page (not the course profile page)
             if ($withlinks) {
-                $username = "<a href=\"$CFG->wwwroot/user/profile.php?id=$USER->id\">$fullname</a>";
+                $usernameurl = new moodle_url('/user/profile.php', array('id' => $USER->id));
+                $username = html_writer::link($usernameurl, $fullname, array('class' => 'username'));
             } else {
                 $username = $fullname;
             }
             if (is_mnet_remote_user($USER) and $idprovider = $DB->get_record('mnet_host', array('id'=>$USER->mnethostid))) {
+                $fromstr = get_string('from');
+                $username .= " {$fromstr} ";
                 if ($withlinks) {
-                    $username .= " from <a href=\"{$idprovider->wwwroot}\">{$idprovider->name}</a>";
+                    $username .= html_writer::link($idprovider->wwwroot, format_string($idprovider->name), array('class' => 'idprovider'));
                 } else {
-                    $username .= " from {$idprovider->name}";
+                    $username .= " {$idprovider->name}";
                 }
             }
             if (isguestuser()) {
-                $loggedinas = $realuserinfo.get_string('loggedinasguest');
+                $loggedinas = $realuserinfo . get_string('loggedinasguest');
                 if (!$loginpage && $withlinks) {
-                    $loggedinas .= " (<a href=\"$loginurl\">".get_string('login').'</a>)';
+                    $loggedinas .= ' (' . html_writer::link($loginurl, get_string('login'), array('class' => 'loggedinasguest')) . ')';
                 }
             } else if (is_role_switched($course->id)) { // Has switched roles
                 $rolename = '';
-                if ($role = $DB->get_record('role', array('id'=>$USER->access['rsw'][$context->path]))) {
-                    $rolename = ': '.role_get_name($role, $context);
+                if ($role = $DB->get_record('role', array('id' => $USER->access['rsw'][$context->path]))) {
+                    $rolename = ': ' . role_get_name($role, $context);
                 }
-                $loggedinas = get_string('loggedinas', 'moodle', $username).$rolename;
+                $loggedinas = get_string('loggedinas', 'moodle', $username) . $rolename;
                 if ($withlinks) {
-                    $url = new moodle_url('/course/switchrole.php', array('id'=>$course->id,'sesskey'=>sesskey(), 'switchrole'=>0, 'returnurl'=>$this->page->url->out_as_local_url(false)));
-                    $loggedinas .= '('.html_writer::tag('a', get_string('switchrolereturn'), array('href'=>$url)).')';
+                    $loggedinasurl = new moodle_url('/course/switchrole.php', array(
+                        'id'         => $course->id,
+                        'sesskey'    => sesskey(),
+                        'switchrole' => 0,
+                        'returnurl'  => $this->page->url->out_as_local_url(false),
+                    ));
+                    $loggedinas .= ' (' . html_writer::link($loggedinasurl, get_string('switchrolereturn'), array('class' => 'switchrole')) . ')';
                 }
             } else {
-                $loggedinas = $realuserinfo.get_string('loggedinas', 'moodle', $username);
+                $loggedinas = $realuserinfo . get_string('loggedinas', 'moodle', $username);
                 if ($withlinks) {
-                    $loggedinas .= " (<a href=\"$CFG->wwwroot/login/logout.php?sesskey=".sesskey()."\">".get_string('logout').'</a>)';
+                    $loggedinasurl = new moodle_url('/login/logout.php', array('sesskey' => sesskey()));
+                    $loggedinas .= ' (' . html_writer::link($loggedinasurl, get_string('logout'), array('class' => 'logout')) . ')';
                 }
             }
         } else {
             $loggedinas = get_string('loggedinnot', 'moodle');
             if (!$loginpage && $withlinks) {
-                $loggedinas .= " (<a href=\"$loginurl\">".get_string('login').'</a>)';
+                $loggedinas .= ' (' . html_writer::link($loginurl, get_string('login'), array('class' => 'login')) . ')';
             }
         }
-
-        $loggedinas = '<div class="logininfo">'.$loggedinas.'</div>';
+        $loggedinas = html_writer::tag('div', $loggedinas, array('class' => 'logininfo'));
 
         if (isset($SESSION->justloggedin)) {
             unset($SESSION->justloggedin);
             if (!empty($CFG->displayloginfailures)) {
                 if (!isguestuser()) {
                     if ($count = count_login_failures($CFG->displayloginfailures, $USER->username, $USER->lastlogin)) {
-                        $loggedinas .= '&nbsp;<div class="loginfailures">';
+                        $loggedinas .= '&nbsp;';
+                        $loggedinas .= html_writer::start_tag('div', array('class' => 'loginfailures'));
                         if (empty($count->accounts)) {
                             $loggedinas .= get_string('failedloginattempts', '', $count);
                         } else {
                             $loggedinas .= get_string('failedloginattemptsall', '', $count);
                         }
-                        if (file_exists("$CFG->dirroot/report/log/index.php") and has_capability('report/log:view', context_system::instance())) {
-                            $loggedinas .= ' (<a href="'.$CFG->wwwroot.'/report/log/index.php'.
-                                                 '?chooselog=1&amp;id=1&amp;modid=site_errors">'.get_string('logs').'</a>)';
+                        if (file_exists("$CFG->dirroot/report/log/index.php") && has_capability('report/log:view', context_system::instance())) {
+                            $reporturl = new moodle_url('/report/log/index.php', array('chooselog' => 1, 'id' => 1, 'modid' => 'site_errors'));
+                            $loggedinas .= ' (' . html_writer::link($reporturl, get_string('logs'), array('class' => 'report')) . ')';
                         }
-                        $loggedinas .= '</div>';
+                        $loggedinas .= html_writer::end_tag('div');
                     }
                 }
             }
