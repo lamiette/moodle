@@ -75,6 +75,7 @@ $string['findlogin'] = 'Find login';
 $string['forbidden-function'] = 'That function has not been enabled for RPC.';
 $string['forbidden-transport'] = 'The transport method you are trying to use is not permitted.';
 $string['forcesavechanges'] = 'Force save changes';
+$string['from'] = 'from {$a}';
 $string['helpnetworksettings'] = 'Configure MNet communication';
 $string['hidelocal'] = 'Hide local users';
 $string['hideremote'] = 'Hide remote users';
