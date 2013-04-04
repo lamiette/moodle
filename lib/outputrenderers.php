@@ -2773,6 +2773,227 @@ EOD;
     }
 
     /**
+     * Returns the login index form (output previously in login/index_form.html)
+     *
+     * @param boolean $showinstructions whether or not to show login instructions
+     * @param object $formdata submitted or remembered login details
+     * @param array $potentialidps a list of authentication plugin IDPs to display
+     * @return string
+     */
+    public function login_index($showinstructions=false, $formdata=null, $potentialidps=null) {
+        global $CFG, $OUTPUT;
+
+        if ($showinstructions) {
+            $columns = 'twocolumns';
+        } else {
+            $columns = 'onecolumn';
+        }
+
+        // Start login output.
+        $html  = html_writer::start_tag('div', array('class' => 'loginbox clearfix '.$columns));
+        $html .= html_writer::start_tag('div', array('class' => 'loginpanel'));
+        if ($CFG->registerauth == 'email' || !empty($CFG->registerauth)) {
+            $signupurl = new moodle_url('login/signup.php');
+            $skiplink  = html_writer::link($signupurl, get_string('tocreatenewaccount'), array('class' => 'skip'));
+            $html .= html_writer::tag('div', $skiplink, array('class' => 'skiplinks'));
+        }
+        $html .= html_writer::tag('h2', get_string('returningtosite'));
+        $html .= html_writer::start_tag('div', array('class' => 'subcontent loginsub'));
+
+        // Add login using username/password information.
+        $html .= html_writer::start_tag('div', array('class' => 'desc'));
+        $html .= get_string('loginusing');
+        $html .= html_writer::empty_tag('br');
+        $html .= '(' . get_string('cookiesenabled') . ')';
+        $html .= $OUTPUT->help_icon('cookiesenabled');
+        $html .= html_writer::end_tag('div');
+
+        // Add any login attempt error messages.
+        if (!empty($errormsg)) {
+            $html .= html_writer::start_tag('div', array('class' => 'loginerrors'));
+            $html .= html_writer::link('#', $errormsg, array('id' => 'loginerrormessage', 'class' => 'accesshide'));
+            $html .= $OUTPUT->error_text($errormsg);
+            $html .= html_writer::end_tag('div');
+        }
+
+        // Add the main login form.
+        $html .= $this->login_form($formdata);
+        $html .= html_writer::end_tag('div'); // END loginsub.
+
+        // Add the guest login form.
+        $html .= html_writer::start_tag('div', array('class' => 'subcontent guestsub'));
+        $html .= html_writer::tag('div', get_string('someallowguest'), array('class' => 'desc'));
+        $html .= $this->login_guest_form();
+        $html .= html_writer::end_tag('div');
+
+        // Add any potential authentication plugin IDPs.
+        // Todo: this might be better suited within the authentication plugin itself now
+        if (!empty($potentialidps)) {
+            $html .= html_writer::start_tag('div', array('class' => 'subcontent potentialidps'));
+            $html .= $this->login_potential_idps($potentialidps);
+            $html .= html_writer::end_tag('div');
+        }
+
+        $html .= html_writer::end_tag('div'); // END loginpanel.
+
+        // Add signup instructions if a self-registration authentication method is set.
+        if ($showinstructions) {
+            $html .= html_writer::start_tag('div', array('class' => 'signuppanel'));
+            $html .= $this->login_signup_instructions();
+            $html .= html_writer::end_tag('div');
+        }
+
+        $html .= html_writer::end_tag('div'); // END loginbox.
+
+        return $html;
+    }
+
+    /**
+     * Returns the login form
+     *
+     * @param object $formdata remembered or auth plugin redirected login details
+     * @return string
+     */
+    protected function login_form($formdata=null) {
+        global $CFG;
+
+        $autocomplete = '';
+        $forgotpassurl = new moodle_url('/login/forgot_password.php');
+        $loginformattributes = array(
+            'action' => new moodle_url('/login/index.php'),
+            'method' => 'post',
+            'id'     => 'login',
+        );
+        $autocomplete = '';
+        if (!empty($CFG->loginpasswordautocomplete)) {
+            $loginformattributes['autocomplete'] = 'off';
+            $autocomplete = 'off';
+        }
+
+        $loginform  = html_writer::start_tag('form', $loginformattributes);
+        $loginform .= html_writer::start_tag('div', array('class' => 'loginform'));
+        $loginform .= html_writer::start_tag('div', array('class' => 'form-label'));
+        $loginform .= html_writer::tag('label', get_string('username'), array('for' => 'username'));
+        $loginform .= html_writer::end_tag('div');
+        $loginform .= html_writer::start_tag('div', array('class' => 'form-input'));
+        $loginform .= html_writer::tag('input', '', array('type' => 'text', 'name' => 'username', 'id' => 'username', 'size' => 15));
+        $loginform .= html_writer::end_tag('div');
+        $loginform .= html_writer::tag('div', null, array('class' => 'clearer'));
+        $loginform .= html_writer::start_tag('div', array('class' => 'form-label'));
+        $loginform .= html_writer::tag('label', get_string('password'), array('for' => 'password'));
+        $loginform .= html_writer::end_tag('div');
+        $loginform .= html_writer::start_tag('div', array('class' => 'form-input'));
+        $loginform .= html_writer::tag('input', '',
+            array('type' => 'password', 'name' => 'password', 'id' => 'password', 'size' => 15, 'autocomplete' => $autocomplete));
+        $loginform .= html_writer::tag('div', null, array('class' => 'clearer'));
+        $loginform .= html_writer::tag('input', null, array('type' => 'submit', 'value' => get_string('login')));
+        $loginform .= html_writer::end_tag('div');
+        $loginform .= html_writer::tag('div', null, array('class' => 'clearer'));
+        $loginform .= html_writer::end_tag('div');
+        if (isset($CFG->rememberusername) and $CFG->rememberusername == 2) {
+            $checked = (isset($formdata->username)&& !empty($formdata->username)) ? 'checked' : '';
+            $loginform .= html_writer::start_tag('div', array('class' => 'rememberpass'));
+            $loginform .= html_writer::tag('input', null,
+                array('type' => 'checkbox', 'name' => 'rememberusername', 'id' => 'rememberusername', 'value' => 1, 'checked' => $checked));
+            $loginform .= html_writer::tag('label', get_string('rememberusername', 'admin'), array('for' => 'rememberusername'));
+            $loginform .= html_writer::end_tag('div');
+        }
+        $loginform .= html_writer::tag('div', null, array('class' => 'clearer'));
+        $loginform .= html_writer::tag('div', html_writer::link($forgotpassurl, get_string('forgotten')), array('class' => 'forgetpass'));
+        $loginform .= html_writer::end_tag('form');
+
+        return $loginform;
+    }
+
+    /**
+     * Returns the guest login form
+     *
+     * @return string
+     */
+    protected function login_guest_form() {
+        $guestloginurl = new moodle_url('/login/index.php');
+        $guestform  = html_writer::start_tag('form', array('action' => $guestloginurl, 'method' => 'post', 'id' => 'guestlogin'));
+        $guestform .= html_writer::start_tag('input', array('type' => 'hidden', 'name' => 'username', 'value' => 'guest'));
+        $guestform .= html_writer::start_tag('input', array('type' => 'hidden', 'name' => 'password', 'value' => 'guest'));
+        $guestform .= html_writer::start_tag('input', array('type' => 'submit', 'value' => get_string('loginguest')));
+        $guestform .= html_writer::end_tag('form');
+
+        return html_writer::tag('div', $guestform, array('class' => 'guestform'));
+    }
+
+    /**
+     * Returns the logins signup instructions
+     *
+     * @return string
+     */
+    protected function login_signup_instructions() {
+        global $CFG;
+
+        $signupurl = new moodle_url('/login/signup.php');
+        $signupform  = html_writer::start_tag('div', array('class' => 'signupform'));
+        $signupform .= html_writer::start_tag('form', array('action' => $signupurl, 'method' => 'get', 'id' => 'signup'));
+        $signupform .= html_writer::empty_tag('input', array('type' => 'submit', 'value' => get_string('startsignup')));
+        $signupform .= html_writer::end_tag('form');
+        $signupform .= html_writer::end_tag('div');
+
+        $signup  = html_writer::start_tag('div', array('signuppanel'));
+        $signup .= html_writer::tag('h2', get_string('firsttime'));
+        $signup .= html_writer::start_tag('div', array('class' => 'subcontent signupsub'));
+
+        // Instructions override the rest for security reasons.
+        if (is_enabled_auth('none')) {
+            $signup .= get_string('loginstepsnone');
+        } else if ($CFG->registerauth == 'email') {
+            if (!empty($CFG->auth_instructions)) {
+                $signup .= format_text($CFG->auth_instructions);
+            } else {
+                $signup .= get_string('loginsteps', '', 'signup.php');
+            }
+            $signup .= $signupform;
+        } else if (!empty($CFG->registerauth)) {
+            $signup .= format_text($CFG->auth_instructions);
+            $signup .= $signupform;
+        } else {
+            $signup .= format_text($CFG->auth_instructions);
+        }
+
+        $signup .= html_writer::end_tag('div');
+        $signup .= html_writer::end_tag('div');
+
+        return $signup;
+    }
+
+    /**
+     * Returns any alternative links for login provided by authentication plugins
+     *
+     * Todo: this might be better suited within the authentication plugin itself now
+     *
+     * @param array $potentialidps a list of IDP details to display
+     * @return string
+     */
+    protected function login_potential_idps($potentialidps) {
+        global $OUTPUT;
+
+        $idps  = html_writer::tag('h6', get_string('potentialidps', 'auth'));
+        $idps .= html_writer::start_tag('div', array('class' => 'potentialidplist'));
+        foreach ($potentialidps as $idp) {
+            $name = $idp['name'];
+            $icon = '';
+            if (isset($idp['icon']) && $idp['icon']) {
+                $icon = $OUTPUT->render($idp['icon'], $name) . ' ';
+            }
+            $link = $icon.$name;
+            if (isset($idp['url']) && $idp['url']) {
+                $link = html_writer::link($idp['url'], $icon.$name, array('title' => $name));
+            }
+            $idps .= html_writer::tag('div', $link, array('class' => 'potentialidp'));
+        }
+        $idps .= html_writer::end_tag('div');
+
+        return $idps;
+    }
+
+    /**
      * Renders a custom menu object (located in outputcomponents.php)
      *
      * The custom menu this method produces makes use of the YUI3 menunav widget
