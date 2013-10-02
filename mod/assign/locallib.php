@@ -3975,7 +3975,16 @@ class assign {
                      ' -> ' .
                      format_string($assignmentname, true, $formatparams) . "\n";
         $posttext .= '---------------------------------------------------------------------' . "\n";
-        $posttext .= get_string($messagetype . 'text', 'assign', $info)."\n";
+
+        // CUSTOM - University of Waikato.
+        $messagestr = "{$messagetype}text";
+        if (isset($info->$messagestr)) {
+            $posttext .= $info->$messagestr;
+        } else {
+            $posttext .= get_string($messagestr, 'assign', $info) . "\n";
+        }
+        // END CUSTOM - University of Waikato.
+
         $posttext .= "\n---------------------------------------------------------------------\n";
         return $posttext;
     }
@@ -4012,7 +4021,16 @@ class assign {
                      format_string($assignmentname, true, $formatparams) .
                      '</a></font></p>';
         $posthtml .= '<hr /><font face="sans-serif">';
-        $posthtml .= '<p>' . get_string($messagetype . 'html', 'assign', $info) . '</p>';
+
+        // CUSTOM University of Waikato.
+        $messagestr = "{$messagetype}html";
+        if (isset($info->$messagestr)) {
+            $posthtml .= html_writer::tag('p', $info->$messagestr);
+        } else {
+            $posthtml .= html_writer::tag('p', get_string($messagestr, 'assign', $info));
+        }
+        // END CUSTOM University of Waikato.
+
         $posthtml .= '</font><hr />';
         return $posthtml;
     }
@@ -4058,6 +4076,18 @@ class assign {
         $info->assignment = format_string($assignmentname, true, array('context'=>$context));
         $info->url = $CFG->wwwroot.'/mod/assign/view.php?id='.$coursemodule->id;
         $info->timeupdated = userdate($updatetime, get_string('strftimerecentfull'));
+
+        // CUSTOM - University of Waikato.
+        if (file_exists($CFG->dirroot . '/local/assign/lib.php')) {
+            require_once($CFG->dirroot . '/local/assign/lib.php');
+            $info = local_assign_get_submission_status($context,
+                                                       $coursemodule,
+                                                       $course,
+                                                       $userfrom,
+                                                       $userto,
+                                                       $info);
+        }
+        // END CUSTOM - University of Waikato.
 
         $postsubject = get_string($messagetype . 'small', 'assign', $info);
         $posttext = self::format_notification_message_text($messagetype,
