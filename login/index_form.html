@@ -111,7 +111,11 @@ if (!empty($CFG->loginpasswordautocomplete)) {
         <h6><?php print_string('potentialidps', 'auth'); ?></h6>
         <div class="potentialidplist">
 <?php foreach ($potentialidps as $idp) {
-    echo  '<div class="potentialidp"><a href="' . $idp['url']->out() . '" title="' . $idp['name'] . '">' . $OUTPUT->render($idp['icon'], $idp['name']) . $idp['name'] . '</a></div>';
+    if (isset($idp['url']) && isset($idp['icon'])) {
+        echo  '<div class="potentialidp"><a href="' . $idp['url']->out() . '" title="' . $idp['name'] . '">' . $OUTPUT->render($idp['icon'], $idp['name']) . $idp['name'] . '</a></div>';
+    } else if (isset($idp['name'])) {
+        echo '<div class="potentialidp">'.$idp['name'].'</div>';
+    }
 } ?>
         </div>
     </div>
